@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+# personal/derived material lives in the private yt-skill-forge-references
+# repo, bridged in locally as symlinks — never committed here
+corpora
+data
+sanderson-byu-course
