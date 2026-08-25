@@ -34,10 +34,33 @@ python3 bin/cluster.py       corpora/SLUG                #           -> build/cl
 
 Every stage is resumable and idempotent. Interrupting a fetch costs one batch.
 
+## Document corpora (PDF/EPUB)
+
+The same corpus layout and synthesis rules also accept documents the user
+already has — books, papers — as an alternative to a channel:
+
+```bash
+python3 bin/ingest_docs.py --corpus corpora/SLUG "Book One (Author).pdf" "Book Two (Author).epub"
+                                                 # -> transcripts/<book-slug>.txt + meta/docs.jsonl
+```
+
+Extraction is `pdftotext` (poppler) for PDFs and `pandoc` for EPUBs, with page
+headers/footers stripped and line-break hyphenation repaired. A file that
+yields under ~5k words is flagged `too_short` — usually a scan with no text
+layer; run `ocrmypdf --skip-text` on it and re-ingest.
+
+Books skip the clustering stage (a book is already curated and ordered; the
+unit of synthesis is the book, ~1–2 skills each) and tighten the rights rules:
+ingest only files the user supplied or verified open-access editions, keep the
+extracted text private exactly like transcripts, and allow no verbatim
+passages in the synthesized skills — attribution names author, title, year,
+and edition.
+
 ## Layout
 
 ```
 bin/            pipeline scripts, stdlib only apart from yt-dlp
+                (ingest_docs.py shells out to pdftotext/pandoc/ocrmypdf)
 data/           history.jsonl, video_channels.json (cache), creators.json
 corpora/<slug>/
   meta/         videos.jsonl, channel.json, no_captions.txt, info/

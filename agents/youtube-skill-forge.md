@@ -5,9 +5,12 @@ description: >
   from rather than merely watch, proposes those worth turning into agent
   skills, and on approval runs the full pipeline: enumerate the channel, fetch
   subtitles, clean transcripts, cluster by domain, synthesize SKILL.md files,
-  and install them. Trigger on: youtube skills, watch history, turn a channel
-  into a skill, extract transcripts, build a skill from a creator, mine my
-  youtube, what should I make a skill from, skill forge.
+  and install them. Also ingests user-supplied documents (PDF/EPUB books,
+  papers) through the same corpus layout and synthesis rules. Trigger on:
+  youtube skills, watch history, turn a channel into a skill, extract
+  transcripts, build a skill from a creator, mine my youtube, what should I
+  make a skill from, skill forge, turn this book into a skill, process these
+  pdfs into skills.
 tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, WebFetch
 model: opus
 ---
@@ -31,8 +34,9 @@ seven installed skills. Match that bar or explain why the corpus can't reach it.
   data/         history.jsonl, video_channels.json, creators.json
   corpora/<slug>/
     meta/       videos.jsonl, channel.json, no_captions.txt, info/
+                docs.jsonl (document corpora)
     srt/        raw caption tracks
-    transcripts/ <video_id>.txt
+    transcripts/ <video_id>.txt, or <book-slug>.txt for document corpora
     build/      domains.json (you write), clusters.json (generated)
     skills/<skill-name>/SKILL.md
 ```
@@ -214,6 +218,43 @@ Expect roughly 5–10% of videos to have no captions at all; they land in
 `meta/no_captions.txt`. Report the yield — videos enumerated, transcripts
 written, words, no-caption count — and reconcile any gap. Numbers that do not
 add up mean a shard died silently.
+
+## Stage 4b — document corpora (PDF/EPUB)
+
+The forge also accepts documents the user already possesses — books, papers,
+lecture notes — through the same corpus layout:
+
+```bash
+python3 bin/ingest_docs.py --corpus corpora/SLUG "path/to/Book (Author).pdf" ...
+```
+
+The script extracts text (`pdftotext` for PDF, `pandoc` for EPUB), strips page
+furniture, repairs hyphenation, and writes `transcripts/<book-slug>.txt` plus a
+`meta/docs.jsonl` record (title, author, sha256, words, extractor). A document
+under ~5k words is recorded as `too_short` and skipped — almost always a
+scanned PDF with no text layer; run `ocrmypdf --skip-text` on it and re-ingest.
+
+Differences from the YouTube path, all of which follow from books being books:
+
+- **Sourcing is the user's act, not yours.** Never fetch a copyrighted book
+  from anywhere; ingest only files the user placed on disk, plus genuinely
+  open-access editions (verify the license before fetching). The
+  watch-history evidence stage does not apply — the user's selection *is*
+  the evidence.
+- **Stage 5 clustering is usually skipped.** A book is already a curated,
+  ordered corpus; the unit of synthesis is the book (or a coherent group of
+  books by one practitioner), not a regex cluster. One 80–170k-word book
+  supports one or two skills — resist inflating it into a suite.
+- **Stage 6 applies unchanged and bites harder.** Synthesize-never-transcribe
+  is a hard rights rule here: no verbatim passages at all from in-copyright
+  books (an author's named terms are fine). The Provenance attribution line
+  names the author, title, year, and edition instead of a channel URL.
+- **Corpus text stays private.** Extracted book text goes wherever the srt/
+  transcripts already go on this machine — the private references area, never
+  a public repo.
+- **Reading depth**: read the framework-bearing chapters end to end and skim
+  extended case studies once the framework is extracted; say in the report
+  which chapters got which treatment.
 
 ## Stage 5 — taxonomy and clustering
 
